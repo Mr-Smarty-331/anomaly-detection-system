@@ -1,0 +1,72 @@
+version: '5.0.0'
+
+services:
+  zookeeper:
+    # Use a pre-built Docker image for Zookeeper from Confluent Inc.
+    image: confluentinc/cp-zookeeper:7.3.0
+    # The hostname for this container on the Docker network. Other services can reach it using this name.
+    hostname: zookeeper
+    # A friendly, predictable name for the container.
+    container_name: zookeeper
+    # Map port 2181 on the host machine to port 2181 in the container.
+    # This is Zookeeper's default client port.
+    ports:
+      - "2181:2181"
+    # Environment variables to configure Zookeeper.
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+
+
+  kafka:
+    # Use a pre-built Docker image for Kafka from Confluent Inc.
+    image: confluentinc/cp-kafka:7.3.0
+    hostname: kafka
+    container_name: kafka
+    # This is a crucial directive. It tells Docker Compose to start the 'zookeeper'
+    # service and ensure it is running before starting the 'kafka' service.
+    depends_on:
+      - zookeeper
+    # Map port 9092 on the host machine to port 9092 in the container.
+    # This allows our Python scripts (running on the host) to connect to Kafka.
+    ports:
+      - "9092:9092"
+    # Environment variables to configure Kafka.
+    environment:
+      # The unique ID for this broker in the Kafka cluster.
+      KAFKA_BROKER_ID: 1
+      # The address of the Zookeeper service. Note we use the service name 'zookeeper'.
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      # This is the address that Kafka will tell clients to connect to.
+      # We are telling it to advertise itself as 'kafka:9092' for other Docker containers,
+      # and 'localhost:9092' for clients running outside Docker (like our producer script).
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      # Since we only have one broker, the replication factor for internal topics must be 1.
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+
+  python-app:
+    # The 'build' instruction tells Docker Compose to build a custom image.
+    # The '.' specifies that the 'build context' (the files available for the build)
+    # is the current directory, where our Dockerfile will be located.
+    build: .
+    hostname: python-app
+    container_name: python-app
+    # Our Python apps depend on Kafka, so we ensure Kafka is started first.
+    depends_on:
+      - kafka
+    # The 'volumes' directive creates a link between our host machine and the container.
+    # This is ESSENTIAL for development. It means any change you make to your .py
+    # files on your computer will be instantly reflected inside the container,
+    # without needing to rebuild the image.
+    # Format: HOST_PATH:CONTAINER_PATH
+    volumes:
+      - .:/app
+    # Sets the default directory for any commands run inside the container.
+    working_dir: /app
+    # This command keeps the container running indefinitely without doing anything.
+    # It's a placeholder that allows us to have a running "base" container
+    # that we can later extend with specific commands for our producer and consumer.
+    command: tail -f /dev/null

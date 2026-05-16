@@ -36,6 +36,7 @@ First, clone the project from your Git repository to your local machine:
 ```bash
 git clone <your-repository-url>
 cd realtime-anomaly-detection
+```
 
 **2. Build and Run the Services**
 

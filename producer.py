@@ -2,11 +2,25 @@ import time
 import json
 import random
 import math 
+import logging 
 from datetime import datetime
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 
+KAFKA_BROKER_URL = "kafka:29092"
+KAFKA_TOPIC = "raw-data"
 ANOMALY_PROBABILITY = 0.05
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+def on_send_success(record_metadata):
+    """Callback for successful message sending, using logging."""
+    logger.info(f"Message sent to topic '{record_metadata.topic}' partition {record_metadata.partition} at offset {record_metadata.offset}")
+def on_send_error(excp):
+    """Callback for failed message sending, using logging."""
+    # Using logger.error to indicate a failure.
+    logger.error(f"Error sending message", exc_info=excp)
 
 def generate_normal_data(counter:int) -> dict: #input a single argument : counter and output a dict of required json schems type of data : timestamp,srrverid,value
     sine_value = 50 + 40*math.sin(0.1 * counter)
@@ -43,10 +57,9 @@ def generate_anomalous_data(counter:int) -> dict:
     return data_point
 
 def main():
-    print("Starting data producer...")
+    logger.info("Starting data producer...")
 
-    KAFKA_BROKER_URL = "kafka:29092"
-
+    producer = None
     # next will be a resilient connection loop
     while not producer:
         try:
@@ -61,10 +74,10 @@ def main():
                 # The number of times to retry sending a message if it fails.
                 retries=5
             )
-            print("Successfully connected to Kafka.")
+            logger.info("Successfully connected to Kafka.")
 
         except NoBrokersAvailable:
-            print(f"Could not connect to Kafka at {KAFKA_BROKER_URL}. Retrying in 5 seconds...")
+            logger.warning(f"Could not connect to Kafka at {KAFKA_BROKER_URL}. Retrying in 5 seconds...")
             time.sleep(5)
 
     counter = 0
@@ -74,29 +87,31 @@ def main():
             if random.random() < ANOMALY_PROBABILITY:
                 # If the number is within our probability threshold, generate an anomaly
                 data_point = generate_anomalous_data(counter)
-                print(f"*** Anomaly Generated: {data_point} ***")
+                logger.info(f"*** Anomaly Generated: {data_point} ***")
             else:
                 # Otherwise, generate a normal data point
                 data_point = generate_normal_data(counter)
-                print(f"Generated data: {data_point}")
+                logger.info(f"Generated data: {data_point}")
+
+            producer.send(KAFKA_TOPIC, value=data_point).add_callback(on_send_success).add_errback(on_send_error)
+
 
             time.sleep(1)
-
             # Increment the counter for the next iteration of the sine wave.
             counter += 1
 
     except KeyboardInterrupt:
     # This block catches the KeyboardInterrupt exception (Ctrl+C).
-        print("\nShutting down producer...")
+        logger.info("Shutting down producer...")
     finally:
 
         if producer:
-            print("Closing Kafka producer.")
+            logger.info("Closing Kafka producer. Flushing messages...")
             # producer.flush() will block until all asynchronous messages are sent.
             producer.flush()
             # Closes the producer connection.
             producer.close()
-            print("Producer closed.")
+            logger.info("Producer closed.")
 
 #____________________________________________#
 if __name__ == "__main__":

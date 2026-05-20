@@ -1,4 +1,3 @@
-from venv import logger
 import pandas as pd
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
@@ -46,13 +45,14 @@ def main():
 
     logger.info("/nInstantiating the isolation forest model....")
 
-    logger.info(f"Model instantiated: {model}")
 
     model = IsolationForest(
         n_estimators=100,
         contamination='auto',
         random_state=42
     )
+
+    logger.info(f"Model instantiated: {model}")
 
     logger.info("\\nTraining the model on the scaled data...")
 

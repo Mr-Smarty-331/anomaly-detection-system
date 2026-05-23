@@ -40,7 +40,7 @@ def generate_normal_data(counter:int) -> dict: #input a single argument : counte
     return data_point
 
 def generate_anomalous_data(counter:int) -> dict:
-    anomaly_type = random.choice("spike", "flatline")
+    anomaly_type = random.choice(("spike", "flatline"))
     if anomaly_type == "spike": #spike
         # This simulates a sudden, sharp, and unexpected event.
         final_value = random.choice([random.uniform(150, 160), random.uniform(-60, -50)])

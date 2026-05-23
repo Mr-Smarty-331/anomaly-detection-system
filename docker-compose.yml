@@ -1,5 +1,4 @@
-version: '5.0.0'
-
+# version: '5.0.0' this is redundant for modern versions
 services:
   zookeeper:
     # using a pre-built Docker image for Zookeeper from Confluent Inc.

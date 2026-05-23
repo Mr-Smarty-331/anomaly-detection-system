@@ -95,7 +95,6 @@ def main():
 
             producer.send(KAFKA_TOPIC, value=data_point).add_callback(on_send_success).add_errback(on_send_error)
 
-
             time.sleep(1)
             # Increment the counter for the next iteration of the sine wave.
             counter += 1

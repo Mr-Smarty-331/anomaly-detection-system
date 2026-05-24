@@ -137,7 +137,7 @@ def update_graph_and_kpi(n):
         df,
         x = 'timestamp',
         y = 'value',
-        title = 'Live Sensor Readings'
+        title = 'Live Sensor Readings',
         legend_title='Data Type',
         hovermode='x unified',
         template='plotly_dark'

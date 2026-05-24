@@ -1,4 +1,3 @@
-
 import json
 import logging
 import joblib
@@ -8,10 +7,24 @@ from kafka.errors import NoBrokersAvailable
 import time
 import sys
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+from influxdb_client import InfluxDBClient
+from influxdb_client.client.write_api import SYNCHRONOUS
+from influxdb_client import InfluxDBClient, Point
+
 # logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 # --- Constants and Configuration ---
+# InfluxDB configs
+INFLUXDB_TOKEN = os.getenv("INFLUX_TOKEN")
+INFLUXDB_URL = "http://influxdb:8086"
+INFLUXDB_ORG = "individual"
+INFLUXDB_BUCKET = "anomaly-detection"
+
 # Kafka configuration
 KAFKA_BROKER_URL = "kafka:29092"
 KAFKA_TOPIC = "raw-data"
@@ -25,8 +38,8 @@ SCALER_PATH = 'scaler.joblib'
 def main():
     logger.info("Starting data consumer...")
 
+# loading the consumer to the producers(all datapoints produced) data
     consumer = None
-
     while not consumer:
         try:
             logger.info(f"Attempting to connect to Kafka at {KAFKA_BROKER_URL}...")
@@ -41,6 +54,7 @@ def main():
             logger.warning(f"Could not connect to Kafka at {KAFKA_BROKER_URL}. Retrying in 5 seconds...")
             time.sleep(5)
 
+# the producer(gives the output - flags by ml model - this will send to influxdb)
     producer = None
     # Use the same resilient connection loop for the producer.
     while not producer:
@@ -56,7 +70,28 @@ def main():
             logger.warning(f"Could not connect Kafka producer. Retrying in 5 seconds...")
             time.sleep(5)
 
+# loading the influxdb (storing the data points - data persistence)
+    influxdb_client = None
+    while not influxdb_client:
+        try:
+            logger.info(f"Attempting to connect to InfluxDB at {INFLUXDB_URL}...") 
+            influxdb_client = InfluxDBClient(
+                url=INFLUXDB_URL,
+                token=INFLUXDB_TOKEN,
+                org=INFLUXDB_ORG
+            )
+            write_api = influxdb_client.write_api(write_options=SYNCHRONOUS)
+            health = influxdb_client.health()
+            if health.status == "pass":
+                logger.info("Successfully connected to InfluxDB and health check passed.")
+            else:
+                logger.error(f"InfluxDB health check failed with status: {health.status}")
+                sys.exit(1)
+        except Exception as e:
+            logger.error(f"Could not connect to InfluxDB: {e}")
+            sys.exit(1)
 
+# loading the model
     try:
         # Load the pre-trained Isolation Forest model.
         logger.info(f"Loading model from {MODEL_PATH}...")
@@ -76,6 +111,7 @@ def main():
 
     logger.info("Consumer is running. Waiting for messages...")
 
+# sending the messages (from producer's marked flags via model) to influxdb 
     try:
         for message in consumer:
             # 1. Deserialize the message value into a dictionary.
@@ -102,6 +138,20 @@ def main():
             else:
                 # Use an INFO log level for normal operations.
                 logger.info(f"Normal data processed: {json.dumps(data_dict)}")
+            try:
+                # 3. Create an InfluxDB Point object from our data.
+                # A "Point" is a single data record in InfluxDB.
+                point = Point("sensor_readings") .tag("sensor_id", data_dict["sensor_id"]) .field("value", data_dict["value"]).field("is_anomaly", data_dict["is_anomaly"]) .time(data_dict["timestamp"])
+
+                # 4. Use the Write API to send the point to our bucket.
+                # The write is synchronous, meaning this line will block until
+                # the write is confirmed by the database.
+                write_api.write(bucket=INFLUXDB_BUCKET, org=INFLUXDB_ORG, record=point)
+
+            except Exception as e:
+                # This catches potential errors during the write process,
+                # such as network issues or InfluxDB being down.
+                logger.error(f"Error writing to InfluxDB: {e}")
 
     except KeyboardInterrupt:
         logger.info("Shutdown signal received. Closing consumer...")
@@ -113,6 +163,9 @@ def main():
             # It's crucial to close the producer to ensure all buffered messages are sent.
             producer.close()
             logger.info("Kafka producer closed.")
+        if influxdb_client:
+            influxdb_client.close()
+            logger.info("InfluxDB client closed.")
 
 if __name__ == "__main__":
     main()

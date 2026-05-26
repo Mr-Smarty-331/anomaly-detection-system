@@ -1,4 +1,15 @@
 # version: '5.0.0' this is redundant for modern versions
+x-python-base: &python-base-service
+  # All Python services will be built from the Dockerfile in the current directory.
+  build: .
+  # Mount the current directory on the host into the /app directory in the container.
+  # This allows for live code changes without rebuilding the image (great for development).
+  volumes:
+    - ./:/app
+  # All Python services will connect to our shared network.
+  networks:
+    - anomaly-detection-network
+
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.0
@@ -36,22 +47,49 @@ services:
     networks:
       - anomaly-detection-network
 
-
-  python-app:
-
-    build: .
-    hostname: python-app
-    container_name: python-app
-
+  producer:
+    # Use the '<<:' key to merge the properties from our python-base-service alias.
+    <<: *python-base-service
+    container_name: producer
+    # The command to run when the container starts. This executes our producer script.
+    command: python producer.py
+    # This service will not start until the 'kafka' service has started.
     depends_on:
       - kafka
+    networks:
+      - anomaly-detection-network
 
-    volumes:
-      - .:/app
+  consumer:
+    <<: *python-base-service
+    container_name: consumer
+    # This command executes our main consumer script.
+    command: python consumer.py
+    depends_on:
+      # The consumer needs both Kafka (to read from) and InfluxDB (to write to).
+      - kafka
+      - influxdb
+    networks:
+      - anomaly-detection-network
 
-    working_dir: /app
+  alerter:
+    <<: *python-base-service
+    container_name: alerter
+    command: python alerter.py
+    depends_on:
+      - kafka
+    networks:
+      - anomaly-detection-network
 
-    command: tail -f /dev/null
+  dashboard:
+    <<: *python-base-service
+    container_name: dashboard
+    command: python dashboard.py
+    depends_on:
+      - influxdb
+    # Map port 8050 on the host to port 8050 in the container
+    # so we can access the dashboard from our web browser.
+    ports:
+      - "8050:8050"
     networks:
       - anomaly-detection-network
 

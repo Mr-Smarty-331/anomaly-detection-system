@@ -6,9 +6,12 @@ import logging
 from datetime import datetime
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
+import os
 
-KAFKA_BROKER_URL = "kafka:29092"
-KAFKA_TOPIC = "raw-data"
+KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL", "localhost:9092")
+RAW_DATA_TOPIC = os.getenv("RAW_DATA_TOPIC", "raw-data")
+# KAFKA_BROKER_URL = "kafka:29092"
+# RAW_DATA_TOPIC = "raw-data"
 ANOMALY_PROBABILITY = 0.05
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -93,7 +96,7 @@ def main():
                 data_point = generate_normal_data(counter)
                 logger.info(f"Generated data: {data_point}")
 
-            producer.send(KAFKA_TOPIC, value=data_point).add_callback(on_send_success).add_errback(on_send_error)
+            producer.send(RAW_DATA_TOPIC, value=data_point).add_callback(on_send_success).add_errback(on_send_error)
 
             time.sleep(1)
             # Increment the counter for the next iteration of the sine wave.

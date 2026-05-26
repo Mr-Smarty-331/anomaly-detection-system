@@ -2,7 +2,7 @@
 
 from kafka import KafkaConsumer
 from kafka.errors import NoBrokersAvailable
-
+import os
 import json 
 import logging
 import time
@@ -14,8 +14,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-KAFKA_BROKER_URL = "kafka:29092"
-ANOMALIES_TOPIC = "anomalies"
+KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL", "localhost:9092")
+ANOMALIES_TOPIC = os.getenv("ANOMALIES_TOPIC", "anomalies")
 
 def main():
     consumer = None

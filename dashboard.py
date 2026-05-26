@@ -9,12 +9,13 @@ import plotly.graph_objects as go
 
 import os
 from dotenv import load_dotenv
+
 load_dotenv()
 
-INFLUXDB_TOKEN = os.getenv("INFLUX_TOKEN")
-INFLUXDB_URL = "http://localhost:8086"
-INFLUXDB_ORG = "individual"
-INFLUXDB_BUCKET = "anomaly-detection"
+INFLUXDB_URL = os.getenv("INFLUXDB_URL", "http://localhost:8086")
+INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN", "${INFLUX_TOKEN}")
+INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "individual")
+INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "anomaly-detection")
 
 app = dash.Dash(__name__, external_stylesheets=[dbc.themes.BOOTSTRAP])
 
@@ -87,7 +88,7 @@ app.layout = dbc.Container([
 
 @app.callback(
     [Output('live-graph', 'figure'),
-     Output('anomaly-count-kpi', 'children')]
+     Output('anomaly-count-kpi', 'children')],
     [Input('interval-component', 'n_intervals')]
 )
 
@@ -103,8 +104,8 @@ def update_graph_and_kpi(n):
         # The function must return a value for EACH output.
         return empty_fig, "0" 
     
-    normal_data = df[df['is_anomaly' == False]]
-    anomalies = df[df['is_anomaly' == True]]
+    normal_data = df[df['is_anomaly'] == False]
+    anomalies = df[df['is_anomaly'] == True]
 
     anomaly_count = len(anomalies)
 
@@ -134,13 +135,12 @@ def update_graph_and_kpi(n):
         ))
 
     fig.update_layout(
-        df,
-        x = 'timestamp',
-        y = 'value',
-        title = 'Live Sensor Readings',
+        title='Live Sensor Readings',
         legend_title='Data Type',
         hovermode='x unified',
-        template='plotly_dark'
+        template='plotly_dark',
+        xaxis_title='Timestamp',
+        yaxis_title='Sensor Value'
     )
     # fig.update_layout(template='plotly_dark')
     # fig.update_traces(mode='lines+markers')

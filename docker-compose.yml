@@ -56,8 +56,9 @@ services:
     # This service will not start until the 'kafka' service has started.
     depends_on:
       - kafka
-    networks:
-      - anomaly-detection-network
+    environment:
+      - KAFKA_BROKER_URL=kafka:29092
+      - RAW_DATA_TOPIC=raw-data
 
   consumer:
     <<: *python-base-service
@@ -68,8 +69,14 @@ services:
       # The consumer needs both Kafka (to read from) and InfluxDB (to write to).
       - kafka
       - influxdb
-    networks:
-      - anomaly-detection-network
+    environment:
+      - KAFKA_BROKER_URL=kafka:29092
+      - RAW_DATA_TOPIC=raw-data
+      - ANOMALIES_TOPIC=anomalies
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUX_TOKEN}
+      - INFLUXDB_ORG=individual
+      - INFLUXDB_BUCKET=anomaly-detection
 
   alerter:
     <<: *python-base-service
@@ -77,8 +84,9 @@ services:
     command: python alerter.py
     depends_on:
       - kafka
-    networks:
-      - anomaly-detection-network
+    environment:
+      - KAFKA_BROKER_URL=kafka:29092
+      - ANOMALIES_TOPIC=anomalies
 
   dashboard:
     <<: *python-base-service
@@ -90,8 +98,11 @@ services:
     # so we can access the dashboard from our web browser.
     ports:
       - "8050:8050"
-    networks:
-      - anomaly-detection-network
+    environment:
+      - INFLUXDB_URL=http://influxdb:8086
+      - INFLUXDB_TOKEN=${INFLUX_TOKEN}
+      - INFLUXDB_ORG=individual
+      - INFLUXDB_BUCKET=anomaly-detection
 
   influxdb:
     image: influxdb:2.9.1

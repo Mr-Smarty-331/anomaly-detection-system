@@ -20,15 +20,15 @@ logger = logging.getLogger(__name__)
 
 # --- Constants and Configuration ---
 # InfluxDB configs
-INFLUXDB_TOKEN = os.getenv("INFLUX_TOKEN")
-INFLUXDB_URL = "http://influxdb:8086"
-INFLUXDB_ORG = "individual"
-INFLUXDB_BUCKET = "anomaly-detection"
+INFLUXDB_URL = os.getenv("INFLUXDB_URL", "http://localhost:8086")
+INFLUXDB_TOKEN = os.getenv("INFLUXDB_TOKEN", "${INFLUX_TOKEN}")
+INFLUXDB_ORG = os.getenv("INFLUXDB_ORG", "individual")
+INFLUXDB_BUCKET = os.getenv("INFLUXDB_BUCKET", "anomaly-detection")
 
 # Kafka configuration
-KAFKA_BROKER_URL = "kafka:29092"
-KAFKA_TOPIC = "raw-data"
-ANOMALIES_TOPIC = "anomalies"
+KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL", "localhost:9092")
+RAW_DATA_TOPIC = os.getenv("RAW_DATA_TOPIC", "raw-data")
+ANOMALIES_TOPIC = os.getenv("ANOMALIES_TOPIC", "anomalies")
 
 # Paths to the saved model and scaler artifacts from the training step.
 MODEL_PATH = 'isolation_forest.joblib'
@@ -43,12 +43,12 @@ def main():
     while not consumer:
         try:
             logger.info(f"Attempting to connect to Kafka at {KAFKA_BROKER_URL}...")
-            consumer = KafkaConsumer(KAFKA_TOPIC,bootstrap_servers = [KAFKA_BROKER_URL], 
+            consumer = KafkaConsumer(RAW_DATA_TOPIC,bootstrap_servers = [KAFKA_BROKER_URL], 
                                      group_id = 'anomaly-detector-group',
                                      value_deserializer=lambda v: json.loads(v.decode('utf-8')),
                                      auto_offset_reset='earliest')
             
-            logger.info("Successfully connected to Kafka and subscribed to topic '{}'.".format(KAFKA_TOPIC))
+            logger.info("Successfully connected to Kafka and subscribed to topic '{}'.".format(RAW_DATA_TOPIC))
 
         except:
             logger.warning(f"Could not connect to Kafka at {KAFKA_BROKER_URL}. Retrying in 5 seconds...")

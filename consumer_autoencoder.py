@@ -97,7 +97,7 @@ def create_influxdb_client():
 if __name__ == "__main__":
     logging.info("Starting Autoencoder Consumer Service...")
 
-    # --- Load the saved model and artifacts ---
+    # Loading the saved model
     logging.info(f"Loading model from {MODEL_PATH}...")
     model = load_model(MODEL_PATH)
     logging.info("Model loaded successfully.")

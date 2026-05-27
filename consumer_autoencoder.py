@@ -129,7 +129,7 @@ if __name__ == "__main__":
         for message in consumer:
             # 1. Deserialize and Extract Data
             # data_point = json.loads(message.value.decode('utf-8'))
-            data_point = json.loads(message.value.decode('utf-8'))
+            data_point = message.value
             value = data_point['value']
 
             # 2. Scale the new data point
@@ -162,7 +162,7 @@ if __name__ == "__main__":
                     # 6. Publish anomaly to the alerts topic
                     enriched_data = {**data_point, 'reconstruction_error': reconstruction_error, 'is_anomaly': True}
                     # producer.send(ANOMALIES_TOPIC, json.dumps(enriched_data).encode('utf-8'))
-                    producer.send(ANOMALIES_TOPIC, json.dumps(enriched_data).encode('utf-8'))
+                    producer.send(ANOMALIES_TOPIC, enriched_data)
                     producer.flush()
                 else:
                     logging.info(f"Normal data point. Error: {reconstruction_error:.4f} <= Threshold: {anomaly_threshold:.4f}")

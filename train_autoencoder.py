@@ -12,6 +12,14 @@ from producer import generate_normal_data
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+def create_sequences(data, time_steps):
+    X = []
+    y = []
+    for i in range(len(data) - time_steps):
+        X.append(data.iloc[i:(i + time_steps)].values)
+        y.append(data.iloc[i + time_steps].values) # or target sequence depending on autoencoder mapping
+    return np.array(X), np.array(y)
+
 def main():
     logging.info("starting training for lstm autoencoder")
     
@@ -87,7 +95,6 @@ def main():
     with open(threshold_path, 'w') as f:
         json.dump({'threshold': threshold}, f)
     logging.info(f"Threshold saved successfully to '{threshold_path}'.")
-
 
 
 

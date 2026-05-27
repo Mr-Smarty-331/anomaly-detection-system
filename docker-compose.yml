@@ -60,13 +60,30 @@ services:
       - KAFKA_BROKER_URL=kafka:29092
       - RAW_DATA_TOPIC=raw-data
 
-  consumer:
+  # consumer:
+  #   <<: *python-base-service
+  #   container_name: consumer
+  #   # This command executes our main consumer script.
+  #   command: python consumer.py
+  #   depends_on:
+  #     # The consumer needs both Kafka (to read from) and InfluxDB (to write to).
+  #     - kafka
+  #     - influxdb
+  #   environment:
+  #     - KAFKA_BROKER_URL=kafka:29092
+  #     - RAW_DATA_TOPIC=raw-data
+  #     - ANOMALIES_TOPIC=anomalies
+  #     - INFLUXDB_URL=http://influxdb:8086
+  #     - INFLUXDB_TOKEN=${INFLUX_TOKEN}
+  #     - INFLUXDB_ORG=individual
+  #     - INFLUXDB_BUCKET=anomaly-detection
+
+  consumer_autoencoder:
+    # To run the LSTM Autoencoder, comment out the 'consumer' block above and uncomment this one
     <<: *python-base-service
-    container_name: consumer
-    # This command executes our main consumer script.
-    command: python consumer.py
+    container_name: consumer_autoencoder
+    command: python consumer_autoencoder.py
     depends_on:
-      # The consumer needs both Kafka (to read from) and InfluxDB (to write to).
       - kafka
       - influxdb
     environment:

@@ -27,7 +27,7 @@ Before you begin, ensure you have the following installed on your local machine:
 
 ### Project Setup and Execution
 
-Follow these steps to get the application running. (Its still in the process of being built so 'd recommend not cloning as of now)
+Follow these steps to get the application running. 
 
 **1. Clone the Repository**
 

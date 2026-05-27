@@ -7,6 +7,7 @@ from datetime import datetime
 from kafka import KafkaProducer
 from kafka.errors import NoBrokersAvailable
 import os
+import numpy as np
 
 KAFKA_BROKER_URL = os.getenv("KAFKA_BROKER_URL", "localhost:9092")
 RAW_DATA_TOPIC = os.getenv("RAW_DATA_TOPIC", "raw-data")
@@ -42,22 +43,49 @@ def generate_normal_data(counter:int) -> dict: #input a single argument : counte
 
     return data_point
 
-def generate_anomalous_data(counter:int) -> dict:
-    anomaly_type = random.choice(("spike", "flatline"))
-    if anomaly_type == "spike": #spike
-        # This simulates a sudden, sharp, and unexpected event.
-        final_value = random.choice([random.uniform(150, 160), random.uniform(-60, -50)])
-    else:  # flatline
-        # This simulates a sensor failure or a process that has stalled.
-        final_value = random.choice([0.0, 100.0])
-    timestamp = datetime.utcnow().isoformat() + "Z"
+# def generate_anomalous_data(counter:int) -> dict:
+#     anomaly_type = random.choice(("spike", "flatline"))
+#     if anomaly_type == "spike": #spike
+#         # This simulates a sudden, sharp, and unexpected event.
+#         final_value = random.choice([random.uniform(150, 160), random.uniform(-60, -50)])
+#     else:  # flatline
+#         # This simulates a sensor failure or a process that has stalled.
+#         final_value = random.choice([0.0, 100.0])
+#     timestamp = datetime.utcnow().isoformat() + "Z"
 
-    data_point = {
+#     data_point = {
+#         "timestamp": timestamp,
+#         "sensor_id": "sensor-001",
+#         "value": final_value
+#     }
+#     return data_point
+
+def generate_anomalous_data(i):
+    """Generates an anomalous data point with a specific pattern."""
+    timestamp = datetime.now().isoformat()
+    sensor_id = "sensor_001"
+    
+    # Let's create two types of anomalies based on the timestamp
+    current_second = datetime.now().second
+
+    if 10 <= current_second < 15:
+        # A sudden, massive spike for 5 seconds
+        value = 100.0 + random.uniform(-5, 5)
+        anomaly_type = "spike"
+    else:
+        # A subtle, gradual drift upwards
+        # This is a contextual anomaly that might be hard for stateless models to catch
+        base_value = np.sin(np.pi * i / 50) * 10
+        drift = (current_second % 10) * 2.5 # Gradually increases from 0 to 22.5
+        value = base_value + drift + random.uniform(-0.5, 0.5)
+        anomaly_type = "drift"
+
+    return {
         "timestamp": timestamp,
-        "sensor_id": "sensor-001",
-        "value": final_value
+        "sensor_id": sensor_id,
+        "value": value,
+        "anomaly_type": anomaly_type # Add context to the data point
     }
-    return data_point
 
 def main():
     logger.info("Starting data producer...")
